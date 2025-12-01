@@ -1,25 +1,19 @@
 import { createClient } from "redis";
 
-const client = await createClient()
-  .on("error", (err) => console.log("Redis Client Error", err))
-  .connect();
+let redisClient: any = null;
 
-await client.set("key", "value");
-const value = await client.get("key");
-client.destroy();
-
-export const RATE_LIMIT = `
-    local current 
-    current = redis.call("incr", KEYS[1])
-    if current == 1 then
-        redis.call("expire", KEYS[1], ARGV[1])
-    end
-    return current
-`;
-
-const rateLimit = await client.eval(RATE_LIMIT, {
-    keys: ["rate_limit:192.168.1.1"],
-    arguments: ['60'],
-});
-
-console.log(rateLimit);
+export async function getRedisClient() {
+    if(!redisClient) {
+        try{
+            redisClient = await createClient({
+                url: process.env.REDIS_URL || ""
+            })
+            .on("error", (err) => console.error("Redis Client Error", err))
+            .connect();
+        } catch (error) {
+            console.error("Error connecting to Redis", error);
+            throw error;
+        }
+    }
+    return redisClient;
+}
